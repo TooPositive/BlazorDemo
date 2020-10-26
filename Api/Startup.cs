@@ -17,7 +17,7 @@ namespace BlazorApp.Api
         public override void Configure(IFunctionsHostBuilder builder)
         {            
             builder.Services.AddDbContext<BookDbContext>(
-                options => options.UseSqlServer(Statics.ConnectionString));
+                options => options.UseSqlServer(Environment.GetEnvironmentVariable("MyConnectionString")));
         }
     }
 }
