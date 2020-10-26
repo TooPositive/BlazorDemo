@@ -29,9 +29,18 @@ namespace BlazorApp.Api
                 [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
                 ILogger log)
         {
+            try
+            {
 
-            var books = await _booksDBContext.Books.ToListAsync();
-            return new OkObjectResult(books);
+                var books = await _booksDBContext.Books.ToListAsync();
+                return new OkObjectResult(books);
+
+            }
+            catch (Exception e)
+            {
+
+                throw;
+            }
         }
 
         [FunctionName("RefreshBooks")]
