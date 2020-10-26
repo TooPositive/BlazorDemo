@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -65,15 +66,15 @@ namespace BlazorApp.Api
                 books.ForEach(x => x.IsBought = false);
                 await _booksDBContext.SaveChangesAsync();
 
-
+                string booksJson = JsonConvert.SerializeObject(books);
                 await signalRMessages.AddAsync(
                 new SignalRMessage
                 {
                     Target = "booksRefreshed",
-                    Arguments = books.ToArray()
+                    Arguments = new[] { booksJson }
                 });
 
-                return new OkObjectResult("All books are mark as not bought.");
+                return new OkObjectResult(booksJson);
             }
             catch (Exception)
             {
