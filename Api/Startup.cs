@@ -15,9 +15,9 @@ namespace BlazorApp.Api
     public class Startup : FunctionsStartup
     {
         public override void Configure(IFunctionsHostBuilder builder)
-        {            
+        {
             builder.Services.AddDbContext<BookDbContext>(
-                options => options.UseSqlServer(Environment.GetEnvironmentVariable("MyConnectionString", EnvironmentVariableTarget.Process)));
+                options => options.UseSqlServer(Environment.GetEnvironmentVariable("MyConnectionString")));
         }
     }
 }
