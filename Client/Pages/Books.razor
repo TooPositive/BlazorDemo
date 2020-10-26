@@ -1,9 +1,11 @@
 ﻿@page "/books"
 @using BlazorApp.Shared.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@using Newtonsoft.Json;
 @inject HttpClient Http
 
 <h1>Simple Book Shop</h1>
-
+<button @onclick="RefreshBookAsync" disabled="@(!IsConnected())">Refresh Books</button>
 @if (books == null)
 {
     <p><em>Loading...</em></p>
@@ -21,11 +23,14 @@ else
         <tbody>
             @foreach (var book in books)
             {
-                <tr>
-                    <td>@book.Author </td>
-                    <td>@book.Title</td>
-                    <td>@book.Price</td>
-                </tr>
+                @if (!book.IsBought)
+                {
+                    <tr>
+                        <td>@book.Author </td>
+                        <td>@book.Title</td>
+                        <td>@book.Price</td>
+                    </tr>
+                }
             }
         </tbody>
     </table>
@@ -38,11 +43,56 @@ else
     {
         try
         {
+            Console.WriteLine("*************** IN  INIT ***************");
+            await InitSignalr();
             books = await Http.GetFromJsonAsync<Book[]>("/api/AllBooks");
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex.ToString());
+        }
+    }
+
+    private HubConnection hubConnection; //for connecting to SignalR
+
+    async Task InitSignalr()
+    {
+        //create a hub connection to the function app as we'll go via the function for everything SignalR.
+        Console.WriteLine(Http.BaseAddress);
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl($@"{Http.BaseAddress}api/")
+            .Build();
+
+        //Registers handler that will be invoked when the hub method with the specified method name is invoked.
+        hubConnection.On<string>("booksRefreshed", (jsonBooks) =>
+        {
+            Console.WriteLine("Book refreshed");
+            var apiBooks = JsonConvert.DeserializeObject<Book[]>(jsonBooks);
+            this.books = apiBooks;
+            StateHasChanged(); //This tells Blazor that the UI needs to be updated
+        });
+
+        await hubConnection.StartAsync(); //start connection!
+    }
+
+    //send our message to the function app
+    async Task RefreshBookAsync()
+    {
+        await Http.PostAsync($"/api/RefreshBooks", null); // post to the function app
+        //StateHasChanged(); //update the UI
+    }
+
+    //Check we're connected
+    public bool IsConnected()
+    {
+        try
+        {
+            return hubConnection != null & hubConnection.State == HubConnectionState.Connected;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Cannot get signalR connection state. {e.Message}");
+            return false;
         }
     }
 }
