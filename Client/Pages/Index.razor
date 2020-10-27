@@ -1,7 +1,106 @@
 ﻿@page "/"
+@using BlazorApp.Shared.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@using Newtonsoft.Json;
+@inject HttpClient Http
 
-<h1>Hello, world!</h1>
+<div class="container" style="margin-bottom: 5px">
+    <h1>Simple Book Shop</h1>
+    <button class="btn btn-sm btn-primary" @onclick="RefreshBookAsync" disabled="@(!IsConnected())">Refresh Books</button>
+</div>
+@if (books == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <ul class="bookListContainer">
+        @foreach (var book in books)
+        {
+        <li class="bookList">
+            <span>There will be Image from Blob Store</span>
+            <span>@book.Author</span>
+            <span>@book.Title</span>
+            <span>@book.Price</span>
+            @if (book.IsBought)
+            {
+                <button class="btn btn-sm buyButton" disabled>Sold OUT!</button>
+            }
+            else
+            {
+                <button class="btn btn-sm buyButton" disabled="@(book.IsBought)" @onclick="(() => BuyBookAsync(book))">Buy book!</button>
+            }
+        </li>
+        }
+    </ul>
+}
 
-Welcome to your new app.
+@code {
+    private Book[] books;
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await InitSignalr();
+            books = await Http.GetFromJsonAsync<Book[]>("/api/AllBooks");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+        }
+    }
+
+    private HubConnection hubConnection;
+
+    async Task InitSignalr()
+    {
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl($@"{Http.BaseAddress}api/")
+            .Build();
+
+
+        hubConnection.On<string>("booksRefreshed", (jsonBooks) =>
+        {
+            var apiBooks = JsonConvert.DeserializeObject<Book[]>(jsonBooks);
+            this.books = apiBooks;
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    async Task RefreshBookAsync()
+    {
+        await Http.PostAsync($"/api/RefreshBooks", null);
+    }
+
+    async Task BuyBookAsync(Book book)
+    {
+        Console.WriteLine(JsonConvert.SerializeObject(book));
+        var bookAsJson =
+        new
+        {
+            Id = book.Id,
+            Author = book.Author,
+            Title = book.Title,
+            IsBought = book.IsBought
+        };
+        Console.WriteLine(bookAsJson);
+        await Http.PostAsJsonAsync($"/api/BuyBook", bookAsJson);
+    }
+
+    public bool IsConnected()
+    {
+        try
+        {
+            return hubConnection != null & hubConnection.State == HubConnectionState.Connected;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Cannot get signalR connection state. {e.Message}");
+            return false;
+        }
+    }
+}
