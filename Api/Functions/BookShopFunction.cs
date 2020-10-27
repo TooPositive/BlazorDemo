@@ -67,10 +67,8 @@ namespace BlazorApp.Api
                 var books = await _booksDBContext.Books.ToListAsync();
                 books.ForEach(x => x.IsBought = false);
                 await _booksDBContext.SaveChangesAsync();
-
                 string booksJson = await GetRefreshedBooksAsSingalRMessage(signalRMessages);
-                return new OkObjectResult(booksJson);
-            }
+                return new OkObjectResult(booksJson);            }
             catch (Exception)
             {
                 return new BadRequestObjectResult("Cannot mark all books as not bought. Check logs.");
